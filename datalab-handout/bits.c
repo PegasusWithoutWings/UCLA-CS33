@@ -158,7 +158,7 @@ NOTES:
 int bitXor(int x, int y) {
   return ~(~((~(x & y) & ~(~x & ~y))));
 }
-/* 
+/*
  * absVal - absolute value of x
  *   Example: absVal(-1) = 1.
  *   You may assume -TMax <= x <= TMax
@@ -171,15 +171,15 @@ int absVal(int x) {
 }
 /*
  * isTmax - returns 1 if x is the maximum, two's complement number,
- *     and 0 otherwise 
+ *     and 0 otherwise
  *   Legal ops: ! ~ & ^ | +
  *   Max ops: 10
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  return !(~(x + x + 1) | !(x + 1));
 }
-/* 
+/*
  * isLessOrEqual - if x <= y  then return 1, else return 0 
  *   Example: isLessOrEqual(4,5) = 1.
  *   Legal ops: ! ~ & ^ | + << >>
