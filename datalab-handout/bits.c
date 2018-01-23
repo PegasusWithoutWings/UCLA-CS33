@@ -218,11 +218,6 @@ int isLessOrEqual(int x, int y) {
  *  Rating: 2
  */
 int byteSwap(int x, int n, int m) {
-  unsigned nbits = n << 3;
-  unsigned mbits = m << 3;
-  unsigned nthMask = 1;
-  unsigned nthByte = 1;
-  unsigned mthByte = 1;
   return 2;
 }
 /* 
@@ -286,7 +281,7 @@ int bitCount(int x) {
  *  Rating: 1
  */
 int upperBits(int n) {
-  unsigned x = ~0;
+  int x = ~0;
   return ~(x >> n);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
