@@ -268,7 +268,7 @@ int rotateLeft(int x, int n) {
  *   Rating: 4
  */
 int isPower2(int x) {
-  return 2;
+  return !(!x + ((x + ((x >> 31) ^ (~0))) & x));
 }
 /* 
  * allEvenBits - return 1 if all even-numbered bits in word set to 1
@@ -278,7 +278,11 @@ int isPower2(int x) {
  *   Rating: 2
  */
 int allEvenBits(int x) {
-  return 2;
+  // Remark that 0b1010 equals 0xAA.
+  int oddBits = (0xAA << 8) + 0xAA;
+  oddBits = (oddBits << 16) | oddBits;
+  // oddBits | x = -1 iff all even bits in x are set to 1
+  return !(~(oddBits | x));
 }
 /*
  * bitParity - returns 1 if x contains an odd number of 0's
