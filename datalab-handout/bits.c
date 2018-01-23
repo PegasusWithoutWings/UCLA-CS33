@@ -292,7 +292,15 @@ int allEvenBits(int x) {
  *   Rating: 4
  */
 int bitParity(int x) {
-  return 2;
+  // We make use of the property that for binary of even length the number of 
+  // 0 bits in x ^ y has the the same parity as the sum of the number of 0 
+  // bits in x and the one in y.
+  x ^= x >> 16;
+  x ^= x >> 8;
+  x ^= x >> 4;
+  x ^= x >> 2;
+  x ^= x >> 1;
+  return x & 1;
 }
 /*
  * bitCount - returns count of number of 1's in word
@@ -302,20 +310,8 @@ int bitParity(int x) {
  *   Rating: 4
  */
 int bitCount(int x) {
-  return 2;
 }
-/* 
- * upperBits - pads n upper bits with 1's
- *  You may assume 0 <= n <= 32
- *  Example: upperBits(4) = 0xF0000000
- *  Legal ops: ! ~ & ^ | + << >>
- *  Max ops: 10
- *  Rating: 1
- */
-int upperBits(int n) {
-  return (!!n << 31) >> (n + ~0);
-}
-/* howManyBits - return the minimum number of bits required to represent x in
+ /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
  *  Examples: howManyBits(12) = 5
  *            howManyBits(298) = 10
