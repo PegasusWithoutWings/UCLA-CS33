@@ -310,6 +310,7 @@ int bitParity(int x) {
  *   Rating: 4
  */
 int bitCount(int x) {
+  return 2;
 }
  /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
