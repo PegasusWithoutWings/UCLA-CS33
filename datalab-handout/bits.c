@@ -251,7 +251,13 @@ int byteSwap(int x, int n, int m) {
  *   Rating: 3
  */
 int rotateLeft(int x, int n) {
-  return ((x >> (32 + (~n + 1))) & ~((~0) << n)) | x << n;
+  // First get only the bits that are wrapped around
+  // Flip 0 everything else
+  int wrap = (x >> (32 + (~n + 1))) & ~((~0) <<n);
+  // Then get the bits that are not wrapped
+  int shift = x << n;
+  // Combine them to get the result
+  return wrap + shift;
 }
 /*
  * isPower2 - returns 1 if x is a power of 2, and 0 otherwise
