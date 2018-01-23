@@ -218,7 +218,11 @@ int isLessOrEqual(int x, int y) {
  *  Rating: 2
  */
 int byteSwap(int x, int n, int m) {
-  unsigned y = 1;
+  unsigned nbits = n << 3;
+  unsigned mbits = m << 3;
+  unsigned nthMask = 1;
+  unsigned nthByte = 1;
+  unsigned mthByte = 1;
   return 2;
 }
 /* 
