@@ -167,7 +167,9 @@ int bitXor(int x, int y) {
  *   Rating: 4
  */
 int absVal(int x) {
-  return 2;
+  // x >> 31 will be all 1 mask if x is negative and all 0 mask otherwise
+  int mask = x >> 31;
+  return (mask & (~x + 1)) | (~mask & x);
 }
 /*
  * isTmax - returns 1 if x is the maximum, two's complement number,
@@ -187,9 +189,26 @@ int isTmax(int x) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  // x32 has 32 bits that share the value of x's sign bit. Similar is y32.
+  int x32 = x >> 31;
+  int y32 = y >> 31;
+  // cond_dif_sign is all 1 when x and y have different sign bit.
+  int cond_dif_sign = x32 ^ y32;
+  int TMax = ~(1<<31);
+  // xp sets the negative bit of x to 0. Similar is yp.
+  int xp = TMax & x;
+  int yp = TMax & y;
+  int xpMinyp = xp + (~yp + 1);
+  int ret =
+  (cond_dif_sign & // when x and y have different signs
+  x32) // return 1 if x is negative, 0 elsewise
+  |
+  (~cond_dif_sign & (//when x and y have the same signs
+  (!!(xpMinyp >> 31) | !xpMinyp) //xpMinyp <= 0
+  ));
+  return ret;
 }
-/* 
+/*
  * byteSwap - swaps the nth byte and the mth byte
  *  Examples: byteSwap(0x12345678, 1, 3) = 0x56341278
  *            byteSwap(0xDEADBEEF, 0, 2) = 0xDEEFBEAD
@@ -199,7 +218,8 @@ int isLessOrEqual(int x, int y) {
  *  Rating: 2
  */
 int byteSwap(int x, int n, int m) {
-    return 2;
+  unsigned y = ;
+  return 2;
 }
 /* 
  * rotateLeft - Rotate x to the left by n
@@ -262,7 +282,8 @@ int bitCount(int x) {
  *  Rating: 1
  */
 int upperBits(int n) {
-  return 2;
+  unsigned x = ~0;
+  return ~(x >> n);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
