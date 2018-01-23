@@ -201,7 +201,7 @@ int isLessOrEqual(int x, int y) {
   int xpMinyp = xp + (~yp + 1);
   int ret =
   (cond_dif_sign & // when x and y have different signs
-  x32) // return 1 if x is negative, 0 elsewise
+  !!x32) // return 1 if x is negative, 0 elsewise
   |
   (~cond_dif_sign & (//when x and y have the same signs
   (!!(xpMinyp >> 31) | !xpMinyp) //xpMinyp <= 0
@@ -218,7 +218,7 @@ int isLessOrEqual(int x, int y) {
  *  Rating: 2
  */
 int byteSwap(int x, int n, int m) {
-  unsigned y = ;
+  unsigned y = 1;
   return 2;
 }
 /* 
