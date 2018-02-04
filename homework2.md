@@ -74,12 +74,12 @@ long loop(long x, long n)
     ```c
     long loop(long x, long n)
     {
-    long result =0;
-    long mask;
-    for (mask = 1; mask != 0; mask <<= (n & 0xff)) {
-        result |= x & mask;
-    }
-    return result;
+        long result =0;
+        long mask;
+        for (mask = 1; mask != 0; mask <<= (n & 0xff)) {
+            result |= x & mask;
+        }
+        return result;
     }
     ```
 
@@ -88,8 +88,29 @@ long loop(long x, long n)
 long switch_prob(long x, long n) {
     long result = x;
     switch(n) {
-
+        case(60):
+        case(62):
+            result = 8 * x;
+            break;
+        case(63):
+            result = x >> 3;
+            break;
+        case(64):
+            x = (x << 4) - x;
+            /* Fall through */
+        case(65):
+            x *= x;
+            /* Fall through */
+        default:
+            result = x + 75;
     }
     return result;
 }
 ```
+
+## Question 3.65
+Let `AA` be the address of array `A`. We know that the address of `A[i][j]` is `AA + 8 * M * i + j` and the one of `A[j][i]` is `AA + 8 * M * j + i`. So for each iteration of the inner loop, when `j` is incremented by 1, we have `&A[i][j + 1] - &A[i][j]` equal 8, while `&A[j + 1][i] - &A[j][i]` equal `8 * M`. Because M is an integer, it is easy to conclude that the register that gets a bigger update for each iteration stores `A[j][i]` and the other one stores `A[i][j]`.
+
+1. `%rdx` holds a pointer to array element `A[i][j]` because it is incremented 8 for each iteration.
+1. `%rax` register holds a pointer to array element `A[j][i]` because it is incremented 120 for each iteration.
+1. The value of `M` is 120 / 8 = 15.
