@@ -74,6 +74,62 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
     int iters=(sizeof(unsigned int)*8/log_radix);
 
     // 256 buckets for 2^8 bins, one for each iteration 
+    unsigned long long buckets[256+1][iters];
+    unsigned long long sum[256+1][iters];
+
+    for(int iter = 0; iter < iters; ++iter) {
+      for(int i = 0; i < bucket_size(log_radix); ++i) {
+        buckets[i][iter]=0;
+        sum[i][iter]=0;
+      }
+
+      //1. Generate the bucket count
+      for(int i = 0; i < dim; ++i) {
+        int index = gen_shift(src[i].key,iter*log_radix,
+                              (bucket_size(log_radix)-1))+1;
+        buckets[index][iter]++;
+      }
+
+      //2. Perform scan
+      for(int i = 1; i < bucket_size(log_radix); ++i) {
+        sum[i][iter] = buckets[i][iter] + sum[i-1][iter];
+      }
+
+      //3. Move Data items
+      for(int i = 0; i < dim; ++i) {
+        int index = gen_shift(src[i].key,iter*log_radix,
+                              bucket_size(log_radix)-1);
+        int out_index = sum[index][iter];
+        move_kvp(dst,src,i,out_index);
+        sum[index][iter]++;
+      }
+
+      // Move dest back to source
+      for(int i = 0; i < dim; ++i) {
+        move_kvp(src,dst,i,i);
+      }
+
+    }
+}
+
+
+
+/*
+ * singlethread - Your current working version of singlethread. 
+ * IMPORTANT: This is the version you will be graded on
+ */
+char singlethread_descr[] = "singlethread: Current working version";
+void singlethread(int dim, kvp *src, kvp *dst) 
+{
+    //This is the built-in stable sort if you want to try it
+    //memcpy(dst, src, dim*sizeof(kvp));
+    //std::stable_sort(dst, dst+dim, kvp_compare);
+    //return;
+
+    int log_radix=8; //Radix of radix-sort is 2^8
+    int iters=(sizeof(unsigned int)*8/log_radix);
+
+    // 256 buckets for 2^8 bins, one for each iteration 
     unsigned long long buckets[iters][256+1];
     unsigned long long sum[iters][256+1];
 
@@ -109,17 +165,6 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
       }
 
     }
-}
-
-
-/*
- * singlethread - Your current working version of singlethread. 
- * IMPORTANT: This is the version you will be graded on
- */
-char singlethread_descr[] = "singlethread: Current working version";
-void singlethread(int dim, kvp *src, kvp *dst) 
-{
-  return naive_singlethread(dim,src,dst);
 }
 
 
