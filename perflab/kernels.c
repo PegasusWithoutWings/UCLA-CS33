@@ -77,8 +77,10 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
     unsigned long long buckets[256+1][iters];
     unsigned long long sum[256+1][iters];
 
+    const int bucketSize = bucket_size(log_radix);
+
     for(int iter = 0; iter < iters; ++iter) {
-      for(int i = 0; i < bucket_size(log_radix); ++i) {
+      for(int i = 0; i < bucketSize; ++i) {
         buckets[i][iter]=0;
         sum[i][iter]=0;
       }
@@ -86,19 +88,19 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
       //1. Generate the bucket count
       for(int i = 0; i < dim; ++i) {
         int index = gen_shift(src[i].key,iter*log_radix,
-                              (bucket_size(log_radix)-1))+1;
+                              (bucketSize-1))+1;
         buckets[index][iter]++;
       }
 
       //2. Perform scan
-      for(int i = 1; i < bucket_size(log_radix); ++i) {
+      for(int i = 1; i < bucketSize; ++i) {
         sum[i][iter] = buckets[i][iter] + sum[i-1][iter];
       }
 
       //3. Move Data items
       for(int i = 0; i < dim; ++i) {
         int index = gen_shift(src[i].key,iter*log_radix,
-                              bucket_size(log_radix)-1);
+                              bucketSize-1);
         int out_index = sum[index][iter];
         move_kvp(dst,src,i,out_index);
         sum[index][iter]++;
