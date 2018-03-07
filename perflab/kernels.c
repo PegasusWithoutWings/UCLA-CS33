@@ -77,14 +77,12 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
     unsigned long long buckets[256+1][iters];
     unsigned long long sum[256+1][iters];
 
+    memset(buckets, 0, (256 + 1) * iters);
+    memset(sum, 0, (256 + 1) * iters);
+
     const int bucketSize = bucket_size(log_radix);
 
     for(int iter = 0; iter < iters; ++iter) {
-      for(int i = 0; i < bucketSize; ++i) {
-        buckets[i][iter]=0;
-        sum[i][iter]=0;
-      }
-
       //1. Generate the bucket count
       for(int i = 0; i < dim; ++i) {
         int index = gen_shift(src[i].key,iter*log_radix,
