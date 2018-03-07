@@ -74,8 +74,8 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
     int iters=(sizeof(unsigned int)*8/log_radix);
 
     // 256 buckets for 2^8 bins, one for each iteration 
-    unsigned long long buckets[256+1][iters];
-    unsigned long long sum[256+1][iters];
+    unsigned long long buckets[iters][256+1];
+    unsigned long long sum[iters][256+1];
 
     const int bucketSize = bucket_size(log_radix);
     memset(buckets, 0, bucketSize * iters * sizeof(long));
@@ -86,21 +86,21 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
       for(int i = 0; i < dim; ++i) {
         int index = gen_shift(src[i].key,iter*log_radix,
                               (bucketSize-1))+1;
-        buckets[index][iter]++;
+        buckets[iter][index]++;
       }
 
       //2. Perform scan
       for(int i = 1; i < bucketSize; ++i) {
-        sum[i][iter] = buckets[i][iter] + sum[i-1][iter];
+        sum[iter][i] = buckets[iter][i] + sum[iter][i-1];
       }
 
       //3. Move Data items
       for(int i = 0; i < dim; ++i) {
         int index = gen_shift(src[i].key,iter*log_radix,
                               bucketSize-1);
-        int out_index = sum[index][iter];
+        int out_index = sum[iter][index];
         move_kvp(dst,src,i,out_index);
-        sum[index][iter]++;
+        sum[iter][index]++;
       }
 
       // Move dest back to source
