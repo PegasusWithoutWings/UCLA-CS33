@@ -65,8 +65,7 @@ static inline int gen_Shift(int val, int shift, int mask) {
 }
 
 static inline void move_Kvp(kvp* dst, kvp* src, int src_i, int dst_i) {
-  dst[dst_i].key = src[src_i].key;
-  dst[dst_i].value = src[src_i].value;
+  dst[dst_i] = src[src_i];
 }
 
 /*
@@ -188,9 +187,9 @@ void singlethread(int dim, kvp *src, kvp *dst)
         int out_index3 = sum[iter][index3];
         int out_index4 = sum[iter][index4];
         move_Kvp(dst,src,j,out_index1);
-        move_Kvp(dst,src,j,out_index2);
-        move_Kvp(dst,src,j,out_index3);
-        move_Kvp(dst,src,j,out_index4);
+        move_Kvp(dst,src,j+1,out_index2);
+        move_Kvp(dst,src,j+2,out_index3);
+        move_Kvp(dst,src,j+3,out_index4);
         sum[iter][index1]++;
         sum[iter][index2]++;
         sum[iter][index3]++;
