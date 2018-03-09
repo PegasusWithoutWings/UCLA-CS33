@@ -141,6 +141,11 @@ void singlethread(int dim, kvp *src, kvp *dst)
     memset(buckets, 0, bucketSize * iters * sizeof(long));
     memset(sum, 0, bucketSize * iters * sizeof(long));
 
+    /*
+    TODO:
+    1. Because phase 1 and phase 2 do not depend on the results from previous
+    phases, we can simply 
+    */
     for(int iter = 0; iter < iters; ++iter) {
       //1. Generate the bucket count
       int i;
@@ -176,21 +181,21 @@ void singlethread(int dim, kvp *src, kvp *dst)
       for(j = 0; j < dim - 3; j += 4) {
         int index1 = gen_Shift(src[j].key,iter*log_radix,
                               bucketSize-1);
+        int index2 = gen_Shift(src[j+1].key,iter*log_radix,
+                              bucketSize-1);
+        int index3 = gen_Shift(src[j+2].key,iter*log_radix,
+                              bucketSize-1);
+        int index4 = gen_Shift(src[j+3].key,iter*log_radix,
+                              bucketSize-1);
         int out_index1 = sum[iter][index1];
         move_Kvp(dst,src,j,out_index1);
         sum[iter][index1]++;
-        int index2 = gen_Shift(src[j+1].key,iter*log_radix,
-                              bucketSize-1);
         int out_index2 = sum[iter][index2];
         move_Kvp(dst,src,j+1,out_index2);
         sum[iter][index2]++;
-        int index3 = gen_Shift(src[j+2].key,iter*log_radix,
-                              bucketSize-1);
         int out_index3 = sum[iter][index3];
         move_Kvp(dst,src,j+2,out_index3);
         sum[iter][index3]++;
-        int index4 = gen_Shift(src[j+3].key,iter*log_radix,
-                              bucketSize-1);
         int out_index4 = sum[iter][index4];
         move_Kvp(dst,src,j+3,out_index4);
         sum[iter][index4]++;
