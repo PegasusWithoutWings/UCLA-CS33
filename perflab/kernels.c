@@ -206,6 +206,26 @@ void singlethread(int dim, kvp *src, kvp *dst)
         int out_index4 = sum[iter][index4];
         move_Kvp(dst,src,j+3,out_index4);
         sum[iter][index4]++;
+        int index5 = gen_Shift(src[j+4].key,iter*log_radix,
+                              bucketSize-1);
+        int out_index5 = sum[iter][index5];
+        move_Kvp(dst,src,j+4,out_index5);
+        sum[iter][index5]++;
+        int index6 = gen_Shift(src[j+5].key,iter*log_radix,
+                              bucketSize-1);
+        int out_index6 = sum[iter][index6];
+        move_Kvp(dst,src,j+5,out_index6);
+        sum[iter][index6]++;
+        int index7 = gen_Shift(src[j+6].key,iter*log_radix,
+                              bucketSize-1);
+        int out_index7 = sum[iter][index7];
+        move_Kvp(dst,src,j+6,out_index7);
+        sum[iter][index7]++;
+        int index8 = gen_Shift(src[j+7].key,iter*log_radix,
+                              bucketSize-1);
+        int out_index8 = sum[iter][index8];
+        move_Kvp(dst,src,j+7,out_index8);
+        sum[iter][index8]++;
       }
 
       for(; j < dim; ++j) {
@@ -223,6 +243,10 @@ void singlethread(int dim, kvp *src, kvp *dst)
         move_Kvp(src,dst,k+1,k+1);
         move_Kvp(src,dst,k+2,k+2);
         move_Kvp(src,dst,k+3,k+3);
+        move_Kvp(src,dst,k+4,k+4);
+        move_Kvp(src,dst,k+5,k+5);
+        move_Kvp(src,dst,k+6,k+6);
+        move_Kvp(src,dst,k+7,k+7);
       }
 
       for(; k < dim; ++k) {
