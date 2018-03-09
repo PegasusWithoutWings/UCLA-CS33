@@ -145,9 +145,26 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
     for(int iter = 0; iter < iters; ++iter) {
       //1. Generate the bucket count
-      for(int i = 0; i < dim; ++i) {
-        int index = gen_Shift(src[i].key,iter*log_radix,
+      int i;
+      for(i = 0; i < dim - 3; i += 4) {
+        int index1 = gen_Shift(src[i].key,iter*log_radix,
                               (bucketSize-1))+1;
+        int index2 = gen_Shift(src[i + 1].key,iter*log_radix,
+                              (bucketSize-1))+1;
+        int index3 = gen_Shift(src[i + 2].key,iter*log_radix,
+                              (bucketSize-1))+1;
+        int index4 = gen_Shift(src[i + 3].key,iter*log_radix,
+                              (bucketSize-1))+1;
+        buckets[iter][index1]++;
+        buckets[iter][index2]++;
+        buckets[iter][index3]++;
+        buckets[iter][index4]++;
+      }
+
+      /* Finish any remaining elements */
+      for (; i < dim; ++i) {
+        int index = gen_shift(src[i].key,iter*log_radix,
+                              (bucket_size(log_radix)-1))+1;
         buckets[iter][index]++;
       }
 
