@@ -175,7 +175,9 @@ void singlethread(int dim, kvp *src, kvp *dst)
       for(int j = 1; j < bucketSize; ++j) {
         sum[iter][j] = buckets[iter][j] + sum[iter][j-1];
       }
+    }
 
+    for (int iter = 0; iter < iters; ++iter) {
       //3. Move Data items
       int j;
       for(j = 0; j < dim - 3; j += 4) {
