@@ -168,14 +168,9 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
       int l;
       //2. Perform scan
-      for(l = 1; l < bucketSize - 3; l+=4) {
+      for(l = 1; l < bucketSize - 1; l+=2) {
         sum[iter][l] = buckets[iter][l] + sum[iter][l-1];
         sum[iter][l+1] = (buckets[iter][l+1] + buckets[iter][l]) + 
-                          sum[iter][l-1];
-        sum[iter][l+2] = (buckets[iter][l+2] + buckets[iter][l+1] + 
-                          buckets[iter][l]) + sum[iter][l-1];
-        sum[iter][l+3] = (buckets[iter][l+3] + buckets[iter][l+2] + 
-                          buckets[iter][l+1] + buckets[iter][l]) + 
                           sum[iter][l-1];
       }
 
