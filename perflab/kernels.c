@@ -166,9 +166,22 @@ void singlethread(int dim, kvp *src, kvp *dst)
         buckets[iter][index]++;
       }
 
+      int k;
       //2. Perform scan
-      for(int j = 1; j < bucketSize; ++j) {
-        sum[iter][j] = buckets[iter][j] + sum[iter][j-1];
+      for(k = 1; k < bucketSize - 3; k+=4) {
+        sum[iter][k] = buckets[iter][k] + sum[iter][k-1];
+        sum[iter][k+1] = (buckets[iter][k+1] + buckets[iter][k]) + 
+                          sum[iter][k-1];
+        sum[iter][k+2] = (buckets[iter][k+2] + buckets[iter][k+1] + 
+                          buckets[iter][k]) + sum[iter][k-1];
+        sum[iter][k+3] = (buckets[iter][k+3] + buckets[iter][k+2] + 
+                          buckets[iter][k+1] + buckets[iter][k]) + 
+                          sum[iter][k-1];
+      }
+
+      /* Finish the remaining elements */
+      for(k; k < bucketSize; ++k) {
+        sum[iter][k] = buckets[iter][k] + sum[iter][k-1];
       }
 
       //3. Move Data items
