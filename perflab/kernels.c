@@ -180,7 +180,7 @@ void singlethread(int dim, kvp *src, kvp *dst)
       }
 
       /* Finish the remaining elements */
-      for(k; k < bucketSize; ++k) {
+      for(; k < bucketSize; ++k) {
         sum[iter][k] = buckets[iter][k] + sum[iter][k-1];
       }
 
