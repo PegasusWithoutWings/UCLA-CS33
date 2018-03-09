@@ -185,7 +185,7 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
       //3. Move Data items
       int j;
-      for(j = 0; j < dim - 3; j += 4) {
+      for(j = 0; j < dim - 7; j += 8) {
         int index1 = gen_Shift(src[j].key,iter*log_radix,
                               bucketSize-1);
         int out_index1 = sum[iter][index1];
@@ -238,7 +238,7 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
       int k;
       // Move dest back to source
-      for(k = 0; k < dim - 3; k += 4) {
+      for(k = 0; k < dim - 7; k += 8) {
         move_Kvp(src,dst,k,k);
         move_Kvp(src,dst,k+1,k+1);
         move_Kvp(src,dst,k+2,k+2);
