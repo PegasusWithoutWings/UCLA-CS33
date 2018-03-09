@@ -146,35 +146,81 @@ void singlethread(int dim, kvp *src, kvp *dst)
     1. Because phase 1 and phase 2 do not depend on the results from previous
     phases, we can simply 
     */
-    for(int iter = 0; iter < iters; ++iter) {
-      //1. Generate the bucket count
-      int i;
-      for(i = 0; i < dim - 3; i += 4) {
-        int index1 = gen_Shift(src[i].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        int index2 = gen_Shift(src[i + 1].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        int index3 = gen_Shift(src[i + 2].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        int index4 = gen_Shift(src[i + 3].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        buckets[iter][index1]++;
-        buckets[iter][index2]++;
-        buckets[iter][index3]++;
-        buckets[iter][index4]++;
-      }
+    //1. Generate the bucket count
+    int i;
+    for(i = 0; i < dim - 3; i += 4) {
+      int index1 = gen_Shift(src[i].key,0*log_radix,
+                            (bucketSize-1))+1;
+      int index2 = gen_Shift(src[i + 1].key,0*log_radix,
+                            (bucketSize-1))+1;
+      int index3 = gen_Shift(src[i + 2].key,0*log_radix,
+                            (bucketSize-1))+1;
+      int index4 = gen_Shift(src[i + 3].key,0*log_radix,
+                            (bucketSize-1))+1;
+      buckets[0][index1]++;
+      buckets[0][index2]++;
+      buckets[0][index3]++;
+      buckets[0][index4]++;
+      int index1 = gen_Shift(src[i].key,1*log_radix,
+                            (bucketSize-1))+1;
+      int index2 = gen_Shift(src[i + 1].key,1*log_radix,
+                            (bucketSize-1))+1;
+      int index3 = gen_Shift(src[i + 2].key,1*log_radix,
+                            (bucketSize-1))+1;
+      int index4 = gen_Shift(src[i + 3].key,1*log_radix,
+                            (bucketSize-1))+1;
+      buckets[1][index1]++;
+      buckets[1][index2]++;
+      buckets[1][index3]++;
+      buckets[1][index4]++;
+      int index1 = gen_Shift(src[i].key,2*log_radix,
+                            (bucketSize-1))+1;
+      int index2 = gen_Shift(src[i + 1].key,2*log_radix,
+                            (bucketSize-1))+1;
+      int index3 = gen_Shift(src[i + 2].key,2*log_radix,
+                            (bucketSize-1))+1;
+      int index4 = gen_Shift(src[i + 3].key,2*log_radix,
+                            (bucketSize-1))+1;
+      buckets[2][index1]++;
+      buckets[2][index2]++;
+      buckets[2][index3]++;
+      buckets[2][index4]++;
+      int index1 = gen_Shift(src[i].key,3*log_radix,
+                            (bucketSize-1))+1;
+      int index2 = gen_Shift(src[i + 1].key,3*log_radix,
+                            (bucketSize-1))+1;
+      int index3 = gen_Shift(src[i + 2].key,3*log_radix,
+                            (bucketSize-1))+1;
+      int index4 = gen_Shift(src[i + 3].key,3*log_radix,
+                            (bucketSize-1))+1;
+      buckets[3][index1]++;
+      buckets[3][index2]++;
+      buckets[3][index3]++;
+      buckets[3][index4]++;
+    }
 
-      /* Finish the remaining elements */
-      for(; i < dim; ++i) {
-        int index = gen_Shift(src[i].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        buckets[iter][index]++;
-      }
+    /* Finish the remaining elements */
+    for(; i < dim; ++i) {
+      int index = gen_Shift(src[i].key,0*log_radix,
+                            (bucketSize-1))+1;
+      buckets[0][index]++;
+      int index = gen_Shift(src[i].key,1*log_radix,
+                            (bucketSize-1))+1;
+      buckets[1][index]++;
+      int index = gen_Shift(src[i].key,2*log_radix,
+                            (bucketSize-1))+1;
+      buckets[2][index]++;
+      int index = gen_Shift(src[i].key,3*log_radix,
+                            (bucketSize-1))+1;
+      buckets[3][index]++;
+    }
 
-      //2. Perform scan
-      for(int j = 1; j < bucketSize; ++j) {
-        sum[iter][j] = buckets[iter][j] + sum[iter][j-1];
-      }
+    //2. Perform scan
+    for(int j = 1; j < bucketSize; ++j) {
+      sum[0][j] = buckets[0][j] + sum[0][j-1];
+      sum[1][j] = buckets[1][j] + sum[1][j-1];
+      sum[2][j] = buckets[2][j] + sum[2][j-1];
+      sum[3][j] = buckets[3][j] + sum[3][j-1];
     }
 
     for (int iter = 0; iter < iters; ++iter) {
