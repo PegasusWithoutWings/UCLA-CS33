@@ -145,40 +145,14 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
     for(int iter = 0; iter < iters; ++iter) {
       //1. Generate the bucket count
-      int i;
-      for(i = 0; i < dim - 3; i += 4) {
-        int index1 = gen_Shift(src[i].key,iter*log_radix,
+      for(int i = 0; i < dim; ++i) {
+        int index = gen_Shift(src[i].key,iter*log_radix,
                               (bucketSize-1))+1;
-        int index2 = gen_Shift(src[i + 1].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        int index3 = gen_Shift(src[i + 2].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        int index4 = gen_Shift(src[i + 3].key,iter*log_radix,
-                              (bucketSize-1))+1;
-        buckets[iter][index1]++;
-        buckets[iter][index2]++;
-        buckets[iter][index3]++;
-        buckets[iter][index4]++;
-      }
-
-      /* Finish any remaining elements */
-      for (; i < dim; ++i) {
-        int index = gen_shift(src[i].key,iter*log_radix,
-                              (bucket_size(log_radix)-1))+1;
         buckets[iter][index]++;
       }
 
       //2. Perform scan
-      int j;
-      for(j = 1; j < bucketSize - 3; j += 4) {
-        sum[iter][j] = buckets[iter][j] + sum[iter][j-1];
-        sum[iter][j + 1] = buckets[iter][j + 1] + sum[iter][j];
-        sum[iter][j + 2] = buckets[iter][j + 2] + sum[iter][j + 1];
-        sum[iter][j + 3] = buckets[iter][j + 3] + sum[iter][j + 2];
-      }
-
-      /* Finish any remaining elements */
-      for(; j < bucketSize; ++j) {
+      for(int j = 1; j < bucketSize; ++j) {
         sum[iter][j] = buckets[iter][j] + sum[iter][j-1];
       }
 
