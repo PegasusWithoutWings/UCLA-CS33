@@ -69,7 +69,6 @@ static inline void move_Kvp(kvp* dst, kvp* src, int src_i, int dst_i) {
   dst[dst_i].value = src[src_i].value;
 }
 
-
 /*
  * naive_singlethread - The naive baseline version of singlethread 
  */
@@ -174,48 +173,49 @@ void singlethread(int dim, kvp *src, kvp *dst)
       }
 
       //3. Move Data items
-      int i;
-      for(i = 0; i < dim - 3; i += 4) {
-        int index1 = gen_Shift(src[i].key,iter*log_radix,
+      int j;
+      for(j = 0; j < dim - 3; j += 4) {
+        int index1 = gen_Shift(src[j].key,iter*log_radix,
                               bucketSize-1);
-        int index2 = gen_Shift(src[i+1].key,iter*log_radix,
+        int index2 = gen_Shift(src[j+1].key,iter*log_radix,
                               bucketSize-1);
-        int index3 = gen_Shift(src[i+2].key,iter*log_radix,
+        int index3 = gen_Shift(src[j+2].key,iter*log_radix,
                               bucketSize-1);
-        int index4 = gen_Shift(src[i+3].key,iter*log_radix,
+        int index4 = gen_Shift(src[j+3].key,iter*log_radix,
                               bucketSize-1);
         int out_index1 = sum[iter][index1];
         int out_index2 = sum[iter][index2];
         int out_index3 = sum[iter][index3];
         int out_index4 = sum[iter][index4];
-        move_Kvp(dst,src,i,out_index1);
-        move_Kvp(dst,src,i,out_index2);
-        move_Kvp(dst,src,i,out_index3);
-        move_Kvp(dst,src,i,out_index4);
+        move_Kvp(dst,src,j,out_index1);
+        move_Kvp(dst,src,j,out_index2);
+        move_Kvp(dst,src,j,out_index3);
+        move_Kvp(dst,src,j,out_index4);
         sum[iter][index1]++;
         sum[iter][index2]++;
         sum[iter][index3]++;
         sum[iter][index4]++;
       }
 
-      for(; i < dim; ++i) {
-        int index = gen_Shift(src[i].key,iter*log_radix,
+      for(; j < dim; ++j) {
+        int index = gen_Shift(src[j].key,iter*log_radix,
                               bucketSize-1);
         int out_index = sum[iter][index];
-        move_Kvp(dst,src,i,out_index);
+        move_Kvp(dst,src,j,out_index);
         sum[iter][index]++;
       }
 
+      int k;
       // Move dest back to source
-      for(int i = 0; i < dim - 3; i += 4) {
-        move_Kvp(src,dst,i,i);
-        move_Kvp(src,dst,i+1,i+1);
-        move_Kvp(src,dst,i+2,i+2);
-        move_Kvp(src,dst,i+3,i+3);
+      for(k = 0; k < dim - 3; k += 4) {
+        move_Kvp(src,dst,k,k);
+        move_Kvp(src,dst,k+1,k+1);
+        move_Kvp(src,dst,k+2,k+2);
+        move_Kvp(src,dst,k+3,k+3);
       }
 
-      for(; i < dim; ++i) {
-        move_Kvp(src,dst,i,i);
+      for(; k < dim; ++k) {
+        move_Kvp(src,dst,k,k);
       }
 
     }
