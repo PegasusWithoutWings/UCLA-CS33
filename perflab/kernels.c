@@ -59,6 +59,17 @@ bool kvp_compare(kvp lhs, kvp rhs) {
   return lhs.key < rhs.key; 
 }
 
+// Inline functions
+static inline int gen_Shift(int val, int shift, int mask) {
+  return ((val >> shift) & mask);
+}
+
+static inline void move_Kvp(kvp* dst, kvp* src, int src_i, int dst_i) {
+  dst[dst_i].key = src[src_i].key;
+  dst[dst_i].value = src[src_i].value;
+}
+
+
 /*
  * naive_singlethread - The naive baseline version of singlethread 
  */
@@ -121,11 +132,6 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
 char singlethread_descr[] = "singlethread: Current working version";
 void singlethread(int dim, kvp *src, kvp *dst) 
 {
-    //This is the built-in stable sort if you want to try it
-    //memcpy(dst, src, dim*sizeof(kvp));
-    //std::stable_sort(dst, dst+dim, kvp_compare);
-    //return;
-
     int log_radix=8; //Radix of radix-sort is 2^8
     int iters=(sizeof(unsigned int)*8/log_radix);
 
@@ -140,7 +146,7 @@ void singlethread(int dim, kvp *src, kvp *dst)
     for(int iter = 0; iter < iters; ++iter) {
       //1. Generate the bucket count
       for(int i = 0; i < dim; ++i) {
-        int index = gen_shift(src[i].key,iter*log_radix,
+        int index = gen_Shift(src[i].key,iter*log_radix,
                               (bucketSize-1))+1;
         buckets[iter][index]++;
       }
@@ -152,21 +158,26 @@ void singlethread(int dim, kvp *src, kvp *dst)
 
       //3. Move Data items
       for(int i = 0; i < dim; ++i) {
-        int index = gen_shift(src[i].key,iter*log_radix,
+        int index = gen_Shift(src[i].key,iter*log_radix,
                               bucketSize-1);
         int out_index = sum[iter][index];
-        move_kvp(dst,src,i,out_index);
+        move_Kvp(dst,src,i,out_index);
         sum[iter][index]++;
       }
 
       // Move dest back to source
       for(int i = 0; i < dim; ++i) {
-        move_kvp(src,dst,i,i);
+        move_Kvp(src,dst,i,i);
       }
 
     }
 }
 
+char singlethread2_descr[] = "singlethread: Experimental Version";
+void singlethread2(int dim, kvp *src, kvp *dst)
+{
+  return;
+}
 
 /********************************************************************* 
  * register_singlethread_functions - Register all of your different versions
