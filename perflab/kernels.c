@@ -12,7 +12,7 @@ Reviewed-by: WinglessPegasus <georgezhangtj97@gmail.com>
 #include "defs.h"
 #include <pthread.h>
 #include <semaphore.h>
-#include <algorithm>
+#include <stdbool.h>
 #include <string.h>
 #include "helper.h"
 
@@ -422,10 +422,46 @@ void naive_multithread(int dim, kvp *src, kvp *dst)
  * IMPORTANT: This is the version you will be graded on
  */
 char multithread_descr[] = "multithread: Current working version";
-void multithread(int dim, kvp *src, kvp *dst)
+void multithread(int dim, kvp *a, kvp *aux)
 {
-  naive_multithread(dim, src, dst);
+  const int BITS = 32; // each int is 32 bits
+  const int BITS_PER_BYTE = 8;
+  const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
+  const int MASK = R - 1;             // 0xFF
+  const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
+
+  int n = dim;
+
+  for (int d = 0; d < w; d++)
+  {
+    // compute frequency counts
+    unsigned long long count[R + 1];
+    memset(count, 0, (R + 1) * sizeof(long long));
+
+    for (int i = 0; i < n; i++)
+    {
+      int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+      count[c + 1]++;
+    }
+
+    // compute cumulates
+    for (int r = 0; r < R; r++)
+      count[r + 1] += count[r];
+
+    // move data
+    for (int i = 0; i < n; i++)
+    {
+      int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+      aux[count[c]++] = a[i];
+    }
+
+    // copy back
+    for (int i = 0; i < n; i++)
+      a[i] = aux[i];
+  }
 }
+
+
 
 /*********************************************************************
  * register_multithread_functions - Register all of your different versions
