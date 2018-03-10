@@ -1,4 +1,9 @@
 /********************************************************
+
+Acked-by: WinglessPegasus <georgezhangtj97@gmail.com>
+Reviewed-by: WinglessPegasus <georgezhangtj97@gmail.com>
+Reviewed-by: WinglessPegasus <georgezhangtj97@gmail.com>
+
  * Kernels to be optimized for the CS:APP Performance Lab
  ********************************************************/
 
@@ -319,8 +324,8 @@ void singlethread(int dim, kvp *a, kvp *aux)
   }
 }
 
-char singlethread2_descr[] = "singlethread: Experimental Version";
-void singlethread2(int dim, kvp *a, kvp *aux)
+char singlethread3_descr[] = "singlethread: Clean Sedgewick Version";
+void singlethread3(int dim, kvp *a, kvp *aux)
 {
   const int BITS = 32; // each int is 32 bits
   const int BITS_PER_BYTE = 8;
@@ -371,6 +376,7 @@ void register_singlethread_functions()
   add_singlethread_function(&naive_singlethread, naive_singlethread_descr);
   add_singlethread_function(&singlethread, singlethread_descr);
   add_singlethread_function(&singlethread2, singlethread2_descr);
+  add_singlethread_function(&singlethread3, singlethread3_descr);
   /* ... Register additional test functions here */
 }
 
