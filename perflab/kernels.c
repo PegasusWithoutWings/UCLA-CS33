@@ -127,8 +127,8 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
  * singlethread - Your current working version of singlethread. 
  * IMPORTANT: This is the version you will be graded on
  */
-char singlethread_descr[] = "singlethread: Current working version";
-void singlethread(int dim, kvp *src, kvp *dst) 
+char singlethread2_descr[] = "singlethread: Old version";
+void singlethread2(int dim, kvp *src, kvp *dst) 
 {
     int log_radix=8; //Radix of radix-sort is 2^8
     int iters=(sizeof(unsigned int)*8/log_radix);
@@ -230,8 +230,8 @@ void singlethread(int dim, kvp *src, kvp *dst)
     }
 }
 
-char singlethread2_descr[] = "singlethread: Experimental Version";
-void singlethread2(int dim, kvp *a, kvp *aux)
+char singlethread_descr[] = "singlethread: Current Working Version";
+void singlethread(int dim, kvp *a, kvp *aux)
 {
   const int BITS = 32;                 // each int is 32 bits 
   const int BITS_PER_BYTE = 8;
