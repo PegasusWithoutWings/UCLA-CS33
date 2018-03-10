@@ -149,30 +149,32 @@ void singlethread(int dim, kvp *src, kvp *dst)
     //1. Generate the bucket count
     int i;
     for(i = 0; i < dim - 3; i += 4) {
-      buckets[0][gen_Shift(src[i].key,0*log_radix, bucketSize-1)]++;
-      buckets[0][gen_Shift(src[i+1].key,0*log_radix, bucketSize-1)]++;
-      buckets[0][gen_Shift(src[i+2].key,0*log_radix, bucketSize-1)]++;
-      buckets[0][gen_Shift(src[i+3].key,0*log_radix, bucketSize-1)]++;
-      buckets[1][gen_Shift(src[i].key,1*log_radix, bucketSize-1)]++;
-      buckets[1][gen_Shift(src[i+1].key,1*log_radix, bucketSize-1)]++;
-      buckets[1][gen_Shift(src[i+2].key,1*log_radix, bucketSize-1)]++;
-      buckets[1][gen_Shift(src[i+3].key,1*log_radix, bucketSize-1)]++;
-      buckets[2][gen_Shift(src[i].key,2*log_radix, bucketSize-1)]++;
-      buckets[2][gen_Shift(src[i+1].key,2*log_radix, bucketSize-1)]++;
-      buckets[2][gen_Shift(src[i+2].key,2*log_radix, bucketSize-1)]++;
-      buckets[2][gen_Shift(src[i+3].key,2*log_radix, bucketSize-1)]++;
-      buckets[3][gen_Shift(src[i].key,3*log_radix, bucketSize-1)]++;
-      buckets[3][gen_Shift(src[i+1].key,3*log_radix, bucketSize-1)]++;
-      buckets[3][gen_Shift(src[i+2].key,3*log_radix, bucketSize-1)]++;
-      buckets[3][gen_Shift(src[i+3].key,3*log_radix, bucketSize-1)]++;
+      buckets[0][gen_Shift(src[i].key,0*log_radix,(bucketSize-1))+1]++;
+      buckets[0][gen_Shift(src[i + 1].key,0*log_radix,(bucketSize-1))+1]++;
+      buckets[0][gen_Shift(src[i + 2].key,0*log_radix,(bucketSize-1))+1]++;
+      buckets[0][gen_Shift(src[i + 3].key,0*log_radix,(bucketSize-1))+1]++;
+      buckets[1][gen_Shift(src[i].key,1*log_radix,(bucketSize-1))+1]++;
+      buckets[1][gen_Shift(src[i + 1].key,1*log_radix,(bucketSize-1))+1]++;
+      buckets[1][gen_Shift(src[i + 2].key,1*log_radix,(bucketSize-1))+1]++;
+      buckets[1][gen_Shift(src[i + 3].key,1*log_radix,(bucketSize-1))+1]++;
+      buckets[2][gen_Shift(src[i].key,2*log_radix,(bucketSize-1))+1]++;
+      buckets[2][gen_Shift(src[i + 1].key,2*log_radix,(bucketSize-1))+1]++;
+      buckets[2][gen_Shift(src[i + 2].key,2*log_radix,(bucketSize-1))+1]++;
+      buckets[2][gen_Shift(src[i + 3].key,2*log_radix,(bucketSize-1))+1]++;
+      buckets[3][gen_Shift(src[i].key,3*log_radix,(bucketSize-1))+1]++;
+      buckets[3][gen_Shift(src[i + 1].key,3*log_radix,(bucketSize-1))+1]++;
+      buckets[3][gen_Shift(src[i + 2].key,3*log_radix,(bucketSize-1))+1]++;
+      buckets[3][gen_Shift(src[i + 3].key,3*log_radix,(bucketSize-1))+1]++;
     }
 
     /* Finish the remaining elements */
     for(; i < dim; ++i) {
-      buckets[0][gen_Shift(src[i].key,0*log_radix, bucketSize-1)]++;
-      buckets[1][gen_Shift(src[i].key,1*log_radix, bucketSize-1)]++;
-      buckets[2][gen_Shift(src[i].key,2*log_radix, bucketSize-1)]++;
-      buckets[3][gen_Shift(src[i].key,3*log_radix, bucketSize-1)]++;
+      int index = gen_Shift(src[i].key,0*log_radix,
+                            (bucketSize-1))+1;
+      buckets[0][index]++;
+      buckets[1][index]++;
+      buckets[2][index]++;
+      buckets[3][index]++;
     }
 
     //2. Perform scan
@@ -187,10 +189,14 @@ void singlethread(int dim, kvp *src, kvp *dst)
       //3. Move Data items
       int j;
       for(j = 0; j < dim - 3; j += 4) {
-        int index1 = gen_Shift(src[j].key,iter*log_radix, bucketSize-1);
-        int index2 = gen_Shift(src[j+1].key,iter*log_radix, bucketSize-1);
-        int index3 = gen_Shift(src[j+2].key,iter*log_radix, bucketSize-1);
-        int index4 = gen_Shift(src[j+3].key,iter*log_radix, bucketSize-1);
+        int index1 = gen_Shift(src[j].key,iter*log_radix,
+                              bucketSize-1);
+        int index2 = gen_Shift(src[j+1].key,iter*log_radix,
+                              bucketSize-1);
+        int index3 = gen_Shift(src[j+2].key,iter*log_radix,
+                              bucketSize-1);
+        int index4 = gen_Shift(src[j+3].key,iter*log_radix,
+                              bucketSize-1);
         int out_index1 = sum[iter][index1];
         move_Kvp(dst,src,j,out_index1);
         sum[iter][index1]++;
