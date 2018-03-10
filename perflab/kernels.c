@@ -241,12 +241,12 @@ void singlethread2(int dim, kvp *a, kvp *aux)
 
   int n = dim;
 
-  for (int d = 0; d < w; d++) {         
+  for (int d = 0; d < w; d++) {
       // compute frequency counts
       unsigned long long count[R+1];
       memset(count, 0, (R + 1) * sizeof(long long));
 
-      for (int i = 0; i < n; i++) {           
+      for (int i = 0; i < n; i++) {
           int c = (a[i].key >> BITS_PER_BYTE*d) & MASK;
           count[c + 1]++;
       }
@@ -278,6 +278,7 @@ void singlethread2(int dim, kvp *a, kvp *aux)
 void register_singlethread_functions() {
     add_singlethread_function(&naive_singlethread, naive_singlethread_descr);
     add_singlethread_function(&singlethread, singlethread_descr);
+    add_singlethread_function(&singlethread2, singlethread2_descr);
     /* ... Register additional test functions here */
 }
 
