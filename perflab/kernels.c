@@ -241,29 +241,59 @@ void singlethread2(int dim, kvp *a, kvp *aux)
 
   int n = dim;
 
-  for (int d = 0; d < w; d++) {
-      // compute frequency counts
-      unsigned long long count[R+1];
-      memset(count, 0, (R + 1) * sizeof(long long));
+  // compute frequency counts
+  unsigned long long count[w][R+1];
+  memset(count, 0, w * (R + 1) * sizeof(long long));
 
-      for (int i = 0; i < n; i++) {
-          int c = (a[i].key >> BITS_PER_BYTE*d) & MASK;
-          count[c + 1]++;
+  for (int i = 0; i < n; i++) {
+      int c0 = (a[i].key >> BITS_PER_BYTE*0) & MASK;
+      int c1 = (a[i].key >> BITS_PER_BYTE*1) & MASK;
+      int c2 = (a[i].key >> BITS_PER_BYTE*2) & MASK;
+      int c3 = (a[i].key >> BITS_PER_BYTE*3) & MASK;
+      count[0][c0 + 1]++;
+      count[1][c1 + 1]++;
+      count[2][c2 + 1]++;
+      count[3][c3 + 1]++;
+  }
+
+  // compute cumulates
+  for (int r = 0; r < R; r++) {
+      count[0][r+1] += count[0][r];
+      count[1][r+1] += count[1][r];
+      count[2][r+1] += count[2][r];
+      count[3][r+1] += count[3][r];
+  }
+
+  for (int d = 0; d < w; d++) {
+      // move data
+      int i;
+      for (i = 0; i < n - 3; i += 4) {
+          int c0 = (a[i].key >> BITS_PER_BYTE*d) & MASK;
+          int c1 = (a[i + 1].key >> BITS_PER_BYTE*d) & MASK;
+          int c2 = (a[i + 2].key >> BITS_PER_BYTE*d) & MASK;
+          int c3 = (a[i + 3].key >> BITS_PER_BYTE*d) & MASK;
+          aux[count[d][c0]++] = a[i];
+          aux[count[d][c1]++] = a[i + 1];
+          aux[count[d][c2]++] = a[i + 2];
+          aux[count[d][c3]++] = a[i + 3];
       }
 
-      // compute cumulates
-      for (int r = 0; r < R; r++)
-          count[r+1] += count[r];
-
-      // move data
-      for (int i = 0; i < n; i++) {
-          int c = (a[i].key >> BITS_PER_BYTE*d) & MASK;
-          aux[count[c]++] = a[i];
+      for (; i < n; i++) {
+        int c1 = (a[i].key >> BITS_PER_BYTE*d) & MASK;
+        aux[count[d][c1]++] = a[i];
       }
 
       // copy back
-      for (int i = 0; i < n; i++)
-          a[i] = aux[i];
+      int j;
+      for ( j = 0; j < n - 3; j += 4){
+          a[j] = aux[j];
+          a[j + 1] = aux[j + 1];
+          a[j + 2] = aux[j + 2];
+          a[j + 3] = aux[j + 3];
+      }
+      for (; j < n; j++) {
+        a[j] = aux[j];
+      }
   }
 }
 
