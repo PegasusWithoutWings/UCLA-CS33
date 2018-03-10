@@ -141,11 +141,6 @@ void singlethread(int dim, kvp *src, kvp *dst)
     memset(buckets, 0, bucketSize * iters * sizeof(long));
     memset(sum, 0, bucketSize * iters * sizeof(long));
 
-    /*
-    TODO:
-    1. Because phase 1 and phase 2 do not depend on the results from previous
-    phases, we can simply 
-    */
     //1. Generate the bucket count
     int i;
     for(i = 0; i < dim - 3; i += 4) {
@@ -236,9 +231,40 @@ void singlethread(int dim, kvp *src, kvp *dst)
 }
 
 char singlethread2_descr[] = "singlethread: Experimental Version";
-void singlethread2(int dim, kvp *src, kvp *dst)
+void singlethread2(int dim, kvp *a, kvp *aux)
 {
-  return;
+  const int BITS = 32;                 // each int is 32 bits 
+  const int BITS_PER_BYTE = 8;
+  const int R = 1 << BITS_PER_BYTE;    // each bytes is between 0 and 255
+  const int MASK = R - 1;              // 0xFF
+  const int w = BITS / BITS_PER_BYTE;  // each int is 4 bytes
+
+  int n = dim;
+
+  for (int d = 0; d < w; d++) {         
+      // compute frequency counts
+      unsigned long long count[R+1];
+      memset(count, 0, (R + 1) * sizeof(long long));
+
+      for (int i = 0; i < n; i++) {           
+          int c = (a[i].key >> BITS_PER_BYTE*d) & MASK;
+          count[c + 1]++;
+      }
+
+      // compute cumulates
+      for (int r = 0; r < R; r++)
+          count[r+1] += count[r];
+
+      // move data
+      for (int i = 0; i < n; i++) {
+          int c = (a[i].key >> BITS_PER_BYTE*d) & MASK;
+          aux[count[c]++] = a[i];
+      }
+
+      // copy back
+      for (int i = 0; i < n; i++)
+          a[i] = aux[i];
+  }
 }
 
 /********************************************************************* 
