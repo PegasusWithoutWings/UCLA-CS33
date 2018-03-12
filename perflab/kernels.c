@@ -142,8 +142,8 @@ void naive_singlethread(int dim, kvp *src, kvp *dst)
 char singlethread2_descr[] = "singlethread: Old version";
 void singlethread2(int dim, kvp *src, kvp *dst)
 {
-  int log_radix = 8; //Radix of radix-sort is 2^8
-  int iters = (sizeof(unsigned int) * 8 / log_radix);
+  const int log_radix = 8; //Radix of radix-sort is 2^8
+  const int iters = (sizeof(unsigned int) * 8 / log_radix);
 
   // 256 buckets for 2^8 bins, one for each iteration
   unsigned long long buckets[iters][256 + 1];
@@ -258,8 +258,7 @@ void singlethread(int dim, kvp *a, kvp *aux)
   const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
   const int MASK = R - 1;             // 0xFF
   const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
-
-  int n = dim;
+  const int n = dim;
 
   // compute frequency counts
   unsigned long long count[w][R + 1];
@@ -332,8 +331,7 @@ void singlethread3(int dim, kvp *a, kvp *aux)
   const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
   const int MASK = R - 1;             // 0xFF
   const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
-
-  int n = dim;
+  const int n = dim;
 
   for (int d = 0; d < w; d++)
   {
@@ -421,38 +419,102 @@ void naive_multithread(int dim, kvp *src, kvp *dst)
  * multithread - Your current working version of multithread
  * IMPORTANT: This is the version you will be graded on
  */
+static const int BITS = 32; // each int is 32 bits
+static const int BITS_PER_BYTE = 8;
+static const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
+static const int MASK = R - 1;             // 0xFF
+static const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
+static pthread_barrier_t barrier;
+
+struct threadParam {
+  unsigned long long (*pcount)[w][R + 1];
+  kvp *a;
+  int n;
+  int d;
+};
+
+void *thread(void *vargp)
+{
+  struct threadParam *params = (struct threadParam *)vargp;
+  unsigned long long (*pcount)[w][R + 1] = params->pcount;
+  kvp *a = params->a;
+  int n = params->n;
+  int d = params->d;
+  for (int i = 0; i < n; i++)
+  {
+    int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+    (*pcount)[d][c + 1]++;
+  }
+
+  // compute cumulates
+  for (int r = 0; r < R; r++)
+    (*pcount)[d][r + 1] += (*pcount)[d][r];
+
+  int s = pthread_barrier_wait(&barrier);
+
+  if (!(s == 0 || s == PTHREAD_BARRIER_SERIAL_THREAD)) {
+    fprintf(stderr, "pthread_barrier_wait (%d)\n", d);
+    exit(s);
+  }
+  return NULL;
+}
+
 char multithread_descr[] = "multithread: Current working version";
 void multithread(int dim, kvp *a, kvp *aux)
 {
-  const int BITS = 32; // each int is 32 bits
-  const int BITS_PER_BYTE = 8;
-  const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
-  const int MASK = R - 1;             // 0xFF
-  const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
+  const int n = dim, numThreads= 4;
+  int s;
+  pthread_t *tid;
+  unsigned long long count[w][R + 1];
+  struct threadParam params_array[numThreads];
 
-  int n = dim;
+   /* Allocate array to hold thread IDs */
+  tid = (pthread_t *)calloc(sizeof(pthread_t), numThreads);
+  if (tid == NULL) {
+    fprintf(stderr, "calloc");
+    exit(1);
+  }
 
+  /* Initialize the barrier. */
+  s = pthread_barrier_init(&barrier, NULL, numThreads);
+  if (s != 0) {
+    fprintf(stderr, "pthread_barrier_init");
+    exit(s);
+  }
+  memset(count, 0, w * (R + 1) * sizeof(long long));
+
+  /* Create 'numThreads' threads */
+  for (int i = 0; i < numThreads; i++) {
+    params_array[i].pcount = &count;
+    params_array[i].a = a;
+    params_array[i].n = n;
+    params_array[i].d = i;
+  }
+
+  for (int threadNum = 0; threadNum < numThreads; threadNum++) {
+    s = pthread_create(&tid[threadNum], NULL, thread,
+            (void *) &params_array[threadNum]);
+    if (s != 0) {
+      fprintf(stderr, "pthread_create");
+      exit(1);
+    }
+ }
+
+  for (int threadNum = 0; threadNum < numThreads; threadNum++) {
+    s = pthread_join(tid[threadNum], NULL);
+    if (s != 0) {
+      fprintf(stderr, "pthread_join");
+      exit(1);
+    }
+ }
+  // compute frequency counts with threads
   for (int d = 0; d < w; d++)
   {
-    // compute frequency counts
-    unsigned long long count[R + 1];
-    memset(count, 0, (R + 1) * sizeof(long long));
-
-    for (int i = 0; i < n; i++)
-    {
-      int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-      count[c + 1]++;
-    }
-
-    // compute cumulates
-    for (int r = 0; r < R; r++)
-      count[r + 1] += count[r];
-
     // move data
     for (int i = 0; i < n; i++)
     {
       int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-      aux[count[c]++] = a[i];
+      aux[count[d][c]++] = a[i];
     }
 
     // copy back
@@ -460,8 +522,6 @@ void multithread(int dim, kvp *a, kvp *aux)
       a[i] = aux[i];
   }
 }
-
-
 
 /*********************************************************************
  * register_multithread_functions - Register all of your different versions
