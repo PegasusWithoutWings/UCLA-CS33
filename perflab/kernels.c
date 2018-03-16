@@ -425,7 +425,7 @@ int ERREXIT(int ret, char const *msg) {
         fprintf(stderr, msg);
         exit(ret);
     }
-    return 0;   
+    return 0;
 }
 
 static const int BITS = 32; // each int is 32 bits
@@ -433,103 +433,108 @@ static const int BITS_PER_BYTE = 8;
 static const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
 static const int MASK = R - 1;             // 0xFF
 static const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
-static const int numThreads= 32;
-static const int P = numThreads / w;       // array partitioned into 8 parts
-static pthread_barrier_t barrier1;
+static const int MAX_NUM_THREADS = 16;
+static int n;                              // the dimension fo the source array
+static kvp *a, *aux;
+static int numThreads;
+static unsigned long long count_mult[MAX_NUM_THREADS][R];
+static pthread_barrier_t barrier;
 
-struct threadParam {
-    unsigned long long (*pcount_mult)[w][P + 1][R + 1];
-    kvp *a;                               // Pointer pointing to the source array
-    int n;                                // There are n numbers in the array
-    int d;                                // this thread works on the dth byte of the integer
-    int p;                                // this thread works on the pth partition of the array
-};
-
-void *thread(void *vargp)
+void *thread(void *var)
 {
-    const struct threadParam *params = (struct threadParam *)vargp;\
-    unsigned long long (*pcount_mult)[w][P + 1][R + 1] = params->pcount_mult;
-    const kvp *a = params->a;
-    const int n = params->n;
-    const int d = params->d;            // this thread processes the dth byte of each integer
-    const int p = params->p;            // this thread processes the pth partition of the array a
-    const int start = n * (p / P);      // this thread processes a[i] for start <= i < end
-    const int end = n * ((p + 1) / P);  // this thread processes a[i] for start <= i < end
+    const int p = *((int *) var);            // this thread processes the pth partition of the array a
+    const int start = n * (p / numThreads);      // this thread processes a[i] for start <= i < end
+    const int end = n * ((p + 1) / numThreads);  // this thread processes a[i] for start <= i < end
 
-    // compute frequency count
-    for (int i = start; i < end; i++)
+    for (int d = 0; d < w; d++)
     {
-        int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-        (*pcount_mult)[d][p][c + 1]++;
+        /* Initialize the partition of the array used to 0 */
+        memset(&count_mult[p], 0, sizeof(unsigned long long ) * R);
+        // compute frequency count
+        for (int i = start; i < end; i++)
+        {
+            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            count_mult[p][c]++;
+        }
+
+        // compute cumulates
+        for (int r = 0; r < R - 1; r++)
+            count_mult[p][r + 1] += count_mult[p][r];
+
+        pthread_barrier_wait(&barrier);
+
+        /* compute global cumulates with the first thread */
+        if (p == 0)
+        {
+            for (int p = 0; p < numThreads - 1; p++)
+                for (int r = 0; r < R - 1; r++)
+                    count_mult[p + 1][r] += count_mult[p][r];
+
+            for (int p = numThreads - 2; p >= 0; p--)
+                for (int r = R - 1; r > 0; r--)
+                    count_mult[p][r] += count_mult[numThreads - 1][r - 1] - 
+                                            count_mult[p][r - 1];
+        }
+
+        pthread_barrier_wait(&barrier);
+
+        // move data
+        for (int i = end - 1; i >= start; i--)
+        {
+            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            aux[--count_mult[p][c]] = a[i];
+        }
+
+        pthread_barrier_wait(&barrier);
+        // copy back
+        for (int i = start; i < end; i++)
+            a[i] = aux[i];
+        pthread_barrier_wait(&barrier);
     }
-    
-    // compute cumulates
-    for (int r = 0; r < R; r++)
-        (*pcount_mult)[d][p][r + 1] += (*pcount_mult)[d][p][r];
-    
-    pthread_barrier_wait(&barrier1);
     return NULL;
 }
 
 char multithread_descr[] = "multithread: Current working version";
-void multithread(int dim, kvp *a, kvp *aux)
+void multithread(int dim, kvp *arr, kvp *aux1)
 {
-    const int n = dim;
+    extern int n, numThreads;
+    extern  kvp *a, *aux;
+    n = dim;
+    a = arr;
+    aux = aux1;
+    if (dim == 1048576 || dim == 4194304) {
+        numThreads = 8;
+    } 
+    else if (dim == 65536 || dim == 262144) {
+        numThreads = 4;
+    }
+    else {
+       singlethread(dim, arr, aux1);
+       return;
+    }
     int s;
-    pthread_t tid[w][P];
-    /* Plus one here is only for a more conveinent bound in looping
-    P + 1 and R + 1 will not actually be used for sorting */
-    unsigned long long count_mult[w][P + 1][R + 1];
-    struct threadParam params_array[w][P];
-
+    pthread_t tid[numThreads];
+    
     /* Initialize the barrier. */
-    pthread_barrier_init(&barrier1, NULL, numThreads);
+    pthread_barrier_init(&barrier, NULL, numThreads);
     
     /* Initialize the thread pamaeters and then create 'numThreads' threads */
-    for (int byte = 0; byte < w; byte++) 
+    for (int t = 0; t < numThreads; t++)
     {
-        for (int partition = 0; partition < P; partition++) 
-        {
-            params_array[byte][partition].pcount_mult = &count_mult;
-            params_array[byte][partition].a = a;
-            params_array[byte][partition].n = n;
-            params_array[byte][partition].d = byte;
-            params_array[byte][partition].p = partition;
-            
-            s = pthread_create(&tid[byte][partition], NULL, thread,
-                               (void *) &params_array[byte][partition]);
-            ERREXIT(s, "pthread_create");
+        int *arg = (int *)malloc(sizeof(int));
+        if (arg == NULL) {
+            ERREXIT(1, "malloc");
         }
+        *arg = t;
+        s = pthread_create(&tid[t], NULL, thread, arg);
+        ERREXIT(s, "pthread_create");
     }
-
-    /* Wait for the threads to finish */
-    for (int byte = 0; byte < w; byte++) 
-    {
-        for (int partition = 0; partition < P; partition++) 
-        {
-            s = pthread_join(tid[byte][partition], NULL);
-            ERREXIT(s, "pthread_join");
-        }
-    }
-
-    // compute global prefix sum and store in the last partition for each byte
-    for (int byte = 0; byte < w; byte++)
-        for (int partition = 0; partition < P; partition++)
-            for (int r = 0; r < R; r++)
-                count_mult[byte][partition + 1][r] += count_mult[byte][partition][r];
     
-    for (int d = 0; d < w; d++)
+    /* Wait for the threads to finish */
+    for (int t = 0; t < numThreads; t++)
     {
-        // move data
-        for (int i = 0; i < n; i++)
-        {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            aux[count_mult[d][P][c]++] = a[i];
-        }
-        
-        // copy back
-        for (int i = 0; i < n; i++)
-            a[i] = aux[i];
+        s = pthread_join(tid[t], NULL);
+        ERREXIT(s, "pthread_join");
     }
 }
 
