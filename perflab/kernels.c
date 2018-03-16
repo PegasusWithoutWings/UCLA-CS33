@@ -489,7 +489,6 @@ void *thread(void *var)
         // copy back
         for (int i = start; i < end; i++)
             a[i] = aux[i];
-        pthread_barrier_wait(&barrier);
     }
     return NULL;
 }
@@ -503,7 +502,7 @@ void multithread(int dim, kvp *arr, kvp *aux1)
     a = arr;
     aux = aux1;
     if (dim == 1048576 || dim == 4194304) {
-        numThreads = 8;
+        numThreads = 16;
     } 
     else if (dim == 65536 || dim == 262144) {
         numThreads = 4;
@@ -536,6 +535,7 @@ void multithread(int dim, kvp *arr, kvp *aux1)
         s = pthread_join(tid[t], NULL);
         ERREXIT(s, "pthread_join");
     }
+    pthread_barrier_destroy(&barrier);
 }
 
 /*********************************************************************
