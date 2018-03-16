@@ -335,25 +335,27 @@ void singlethread3(int dim, kvp *a, kvp *aux)
     
     for (int d = 0; d < w; d++)
     {
-        // compute frequency counts
-        unsigned long long count[R + 1];
-        memset(count, 0, (R + 1) * sizeof(long long));
+        /* count[i] stores the number of elements up to and including
+        element i in the array */
+        unsigned long long count[R];
+        memset(count, 0, R * sizeof(long long));
         
+        // compute frequency counts
         for (int i = 0; i < n; i++)
         {
             int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            count[c + 1]++;
+            count[c]++;
         }
         
         // compute cumulates
-        for (int r = 0; r < R; r++)
+        for (int r = 0; r < R - 1; r++)
             count[r + 1] += count[r];
         
         // move data
-        for (int i = 0; i < n; i++)
+        for (int i = n - 1; i >= 0; i--)
         {
             int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            aux[count[c]++] = a[i];
+            aux[--count[c]] = a[i];
         }
         
         // copy back
