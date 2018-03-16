@@ -437,7 +437,7 @@ static const int MAX_NUM_THREADS = 16;
 static int n;                              // the dimension fo the source array
 static kvp *a, *aux;
 static int numThreads;
-static unsigned long long count_mult[MAX_NUM_THREADS][R];
+static unsigned long long count_mult[w][MAX_NUM_THREADS][R];
 static pthread_barrier_t barrier;
 
 void *thread(void *var)
@@ -446,50 +446,94 @@ void *thread(void *var)
     const int start = n * (p / numThreads);      // this thread processes a[i] for start <= i < end
     const int end = n * ((p + 1) / numThreads);  // this thread processes a[i] for start <= i < end
 
+    /* Initialize the partition of the array used to 0 */
+    memset(&count_mult[0][p], 0, sizeof(unsigned long long ) * R);
+    memset(&count_mult[1][p], 0, sizeof(unsigned long long ) * R);
+    memset(&count_mult[2][p], 0, sizeof(unsigned long long ) * R);
+    memset(&count_mult[3][p], 0, sizeof(unsigned long long ) * R);
+    // compute frequency count
+    for (int i = start; i < end; i++)
+    {
+        int c0 = (a[i].key >> BITS_PER_BYTE * 0) & MASK;
+        int c1 = (a[i].key >> BITS_PER_BYTE * 1) & MASK;
+        int c2 = (a[i].key >> BITS_PER_BYTE * 2) & MASK;
+        int c3 = (a[i].key >> BITS_PER_BYTE * 3) & MASK;
+        count_mult[0][p][c0]++;
+        count_mult[1][p][c1]++;
+        count_mult[2][p][c2]++;
+        count_mult[3][p][c3]++;
+    }
+
+    // compute cumulates
+    for (int r = 0; r < R - 1; r++) {
+        count_mult[0][p][r + 1] += count_mult[0][p][r];
+        count_mult[1][p][r + 1] += count_mult[1][p][r];
+        count_mult[2][p][r + 1] += count_mult[2][p][r];
+        count_mult[3][p][r + 1] += count_mult[3][p][r];
+    }
+
+    pthread_barrier_wait(&barrier);
+
+    /* compute global cumulates with the first thread */
+    if (p == 0)
+    {
+        for (int p = 0; p < numThreads - 1; p++) {
+            for (int r = 0; r < R - 1; r++) {
+                count_mult[0][p + 1][0] += count_mult[0][p][r];
+                count_mult[1][p + 1][1] += count_mult[1][p][r];
+                count_mult[2][p + 1][2] += count_mult[2][p][r];
+                count_mult[3][p + 1][3] += count_mult[3][p][r];
+            }
+        }
+
+        for (int p = numThreads - 2; p >= 0; p--) {
+             for (int r = R - 1; r > 0; r--) {
+                count_mult[0][p][r] += count_mult[0][numThreads - 1][r - 1] - count_mult[0][p][r - 1];
+                count_mult[1][p][r] += count_mult[1][numThreads - 1][r - 1] - count_mult[1][p][r - 1];
+                count_mult[2][p][r] += count_mult[2][numThreads - 1][r - 1] - count_mult[2][p][r - 1];
+                count_mult[3][p][r] += count_mult[3][numThreads - 1][r - 1] - count_mult[3][p][r - 1];
+             }
+        }
+    }
+
+    pthread_barrier_wait(&barrier);
+
     for (int d = 0; d < w; d++)
     {
-        /* Initialize the partition of the array used to 0 */
-        memset(&count_mult[p], 0, sizeof(unsigned long long ) * R);
-        // compute frequency count
-        for (int i = start; i < end; i++)
-        {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            count_mult[p][c]++;
-        }
-
-        // compute cumulates
-        for (int r = 0; r < R - 1; r++)
-            count_mult[p][r + 1] += count_mult[p][r];
-
-        pthread_barrier_wait(&barrier);
-
-        /* compute global cumulates with the first thread */
-        if (p == 0)
-        {
-            for (int p = 0; p < numThreads - 1; p++)
-                for (int r = 0; r < R - 1; r++)
-                    count_mult[p + 1][r] += count_mult[p][r];
-
-            for (int p = numThreads - 2; p >= 0; p--)
-                for (int r = R - 1; r > 0; r--)
-                    count_mult[p][r] += count_mult[numThreads - 1][r - 1] - 
-                                            count_mult[p][r - 1];
-        }
-
-        pthread_barrier_wait(&barrier);
-
         // move data
-        for (int i = end - 1; i >= start; i--)
+        int i;
+        for (i = end - 1; i >= start + 3; i -= 4)
         {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            aux[--count_mult[p][c]] = a[i];
+            int c0 = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            int c1 = (a[i - 1].key >> BITS_PER_BYTE * d) & MASK;
+            int c2 = (a[i - 2].key >> BITS_PER_BYTE * d) & MASK;
+            int c3 = (a[i - 3].key >> BITS_PER_BYTE * d) & MASK;
+            aux[--count_mult[d][p][c0]] = a[i];
+            aux[--count_mult[d][p][c1]] = a[i - 1];
+            aux[--count_mult[d][p][c2]] = a[i - 2];
+            aux[--count_mult[d][p][c3]] = a[i - 3];
         }
 
+        for (; i >= start; i--) {
+            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            aux[--count_mult[d][p][c]] = a[i];
+        }
+
+
         pthread_barrier_wait(&barrier);
+
         // copy back
-        for (int i = start; i < end; i++)
-            a[i] = aux[i];
-        pthread_barrier_wait(&barrier);
+        int j;
+        for (j = start; j < end - 3; j += 4) {
+            a[j + 0] = aux[j + 0];
+            a[j + 1] = aux[j + 1];
+            a[j + 2] = aux[j + 2];
+            a[j + 3] = aux[j + 3];
+        }
+
+        for (; j < end; j++) {
+            a[j] = aux[j];
+        }
     }
     return NULL;
 }
@@ -503,10 +547,10 @@ void multithread(int dim, kvp *arr, kvp *aux1)
     a = arr;
     aux = aux1;
     if (dim == 1048576 || dim == 4194304) {
-        numThreads = 8;
+        numThreads = 16;
     } 
     else if (dim == 65536 || dim == 262144) {
-        numThreads = 4;
+        numThreads = 8;
     }
     else {
        singlethread(dim, arr, aux1);
