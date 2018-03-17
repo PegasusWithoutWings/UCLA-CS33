@@ -513,6 +513,7 @@ static int n;                              // the dimension fo the source array
 static kvp *a, *aux, *tmp;
 static int numThreads;
 static unsigned long long count_mult[w][MAX_NUM_THREADS][R];
+static unsigned long long count_mult2[MAX_NUM_THREADS][R];
 static pthread_barrier_t barrier;
 
 void *thread(void *var)
@@ -600,6 +601,73 @@ void *thread(void *var)
     return NULL;
 }
 
+void *thread2(void *var)
+{
+    const int p = *((int *) var);            // this thread processes the pth partition of the array a
+    const int start = n * (p / numThreads);      // this thread processes a[i] for start <= i < end
+    const int end = n * ((p + 1) / numThreads);  // this thread processes a[i] for start <= i < end
+
+    for (int d = 0; d < w; d++) {
+        /* Initialize the partition of the array used to 0 */
+        memset(&count_mult2[p], 0, sizeof(unsigned long long ) * R);
+        // compute frequency count
+        for (int i = start; i < end; i++)
+        {
+            int c = (a[i].key >> BITS_PER_BYTE * 0) & MASK;
+            count_mult2[p][c]++;
+        }
+
+        // compute cumulates
+        for (int r = 0; r < R - 1; r++) {
+            count_mult2[p][r + 1] += count_mult2[p][r];
+        }
+
+        pthread_barrier_wait(&barrier);
+
+        /* compute global cumulates with the first thread */
+        if (p == 0)
+        {
+            for (int p = 0; p < numThreads - 1; p++)
+                for (int r = 0; r < R - 1; r++) {
+                    count_mult2[p + 1][r] += count_mult2[p][r];
+                }
+
+            for (int p = numThreads - 2; p >= 0; p--)
+                for (int r = R - 1; r > 0; r--) {
+                    count_mult2[p][r] += count_mult2[numThreads - 1][r - 1] - count_mult2[p][r - 1];
+                }
+        }
+
+        pthread_barrier_wait(&barrier);
+
+        // move data
+        for (int i = end - 1; i >= start; i--)
+        {
+            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            aux[--count_mult2[p][c]] = a[i];
+        }
+
+        pthread_barrier_wait(&barrier);
+
+        // copy back
+        if (p == 0) {
+            if (d != w - 1) {
+                tmp = a;
+                a = aux;
+                aux = tmp;
+            }
+            else {
+                for (int i = 0; i < n; i++) {
+                    a[i] = aux[i];
+                }
+            }
+        }
+        pthread_barrier_wait(&barrier);
+    }
+    return NULL;
+}
+
+
 char multithread_descr[] = "multithread: Current working version";
 void multithread(int dim, kvp *arr, kvp *aux1)
 {
@@ -632,7 +700,7 @@ void multithread(int dim, kvp *arr, kvp *aux1)
             ERREXIT(1, "malloc");
         }
         *arg = t;
-        s = pthread_create(&tid[t], NULL, thread, arg);
+        s = pthread_create(&tid[t], NULL, thread2, arg);
         ERREXIT(s, "pthread_create");
     }
     
