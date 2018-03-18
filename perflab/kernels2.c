@@ -259,7 +259,6 @@ void singlethread(int dim, kvp *a, kvp *aux)
     const int MASK = R - 1;             // 0xFF
     const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
     const int n = dim;
-    kvp *tmp;
     
     // compute frequency counts
     unsigned long long count[w][R + 1];
@@ -309,24 +308,17 @@ void singlethread(int dim, kvp *a, kvp *aux)
         }
         
         // copy back
-        if (d != w - 1) {
-            tmp = a;
-            a = aux;
-            aux = tmp;
-        } 
-        else {
-            int j;
-            for (j = 0; j < n - 3; j += 4)
-            {
-                a[j] = aux[j];
-                a[j + 1] = aux[j + 1];
-                a[j + 2] = aux[j + 2];
-                a[j + 3] = aux[j + 3];
-            }
-            for (; j < n; j++)
-            {
-                a[j] = aux[j];
-            }
+        int j;
+        for (j = 0; j < n - 3; j += 4)
+        {
+            a[j] = aux[j];
+            a[j + 1] = aux[j + 1];
+            a[j + 2] = aux[j + 2];
+            a[j + 3] = aux[j + 3];
+        }
+        for (; j < n; j++)
+        {
+            a[j] = aux[j];
         }
     }
 }
@@ -340,7 +332,6 @@ void singlethread3(int dim, kvp *a, kvp *aux)
     const int MASK = R - 1;             // 0xFF
     const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
     const int n = dim;
-    kvp *tmp;
     
     for (int d = 0; d < w; d++)
     {
@@ -368,73 +359,8 @@ void singlethread3(int dim, kvp *a, kvp *aux)
         }
         
         // copy back
-        if (d != w - 1) {
-            tmp = a;
-            a = aux;
-            aux = tmp;
-        }
-        else {
-            for (int i = 0; i < n; i++) {
-                a[i] = aux[i];
-            }
-        }
-    }
-}
-
-char singlethread4_descr[] = "singlethread: No Unrolling Version";
-void singlethread4(int dim, kvp *a, kvp *aux)
-{
-    const int BITS = 32; // each int is 32 bits
-    const int BITS_PER_BYTE = 8;
-    const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
-    const int MASK = R - 1;             // 0xFF
-    const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
-    const int n = dim;
-    kvp *tmp;
-    
-    unsigned long long count[w][R + 1];
-    memset(count, 0, w * (R + 1) * sizeof(long long));
-    
-    for (int i = 0; i < n; i++)
-    {
-        int c0 = (a[i].key >> BITS_PER_BYTE * 0) & MASK;
-        int c1 = (a[i].key >> BITS_PER_BYTE * 1) & MASK;
-        int c2 = (a[i].key >> BITS_PER_BYTE * 2) & MASK;
-        int c3 = (a[i].key >> BITS_PER_BYTE * 3) & MASK;
-        count[0][c0 + 1]++;
-        count[1][c1 + 1]++;
-        count[2][c2 + 1]++;
-        count[3][c3 + 1]++;
-    }
-    
-    // compute cumulates
-    for (int r = 0; r < R; r++)
-    {
-        count[0][r + 1] += count[0][r];
-        count[1][r + 1] += count[1][r];
-        count[2][r + 1] += count[2][r];
-        count[3][r + 1] += count[3][r];
-    }
-
-    for (int d = 0; d < w; d++) {   
-        // move data
-        for (int i = n - 1; i >= 0; i--)
-        {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            aux[--count[d][c]] = a[i];
-        }
-        
-        // copy back
-        if (d != w - 1) {
-            tmp = a;
-            a = aux;
-            aux = tmp;
-        }
-        else {
-            for (int i = 0; i < n; i++) {
-                a[i] = aux[i];
-            }
-        }
+        for (int i = 0; i < n; i++)
+            a[i] = aux[i];
     }
 }
 /********************************************************************* 
@@ -451,7 +377,6 @@ void register_singlethread_functions()
     add_singlethread_function(&singlethread, singlethread_descr);
     add_singlethread_function(&singlethread2, singlethread2_descr);
     add_singlethread_function(&singlethread3, singlethread3_descr);
-    add_singlethread_function(&singlethread4, singlethread4_descr);
     /* ... Register additional test functions here */
 }
 
@@ -495,14 +420,6 @@ void naive_multithread(int dim, kvp *src, kvp *dst)
  * multithread - Your current working version of multithread
  * IMPORTANT: This is the version you will be graded on
  */
-int ERREXIT(int ret, char const *msg) {
-    if (ret != 0) {
-        fprintf(stderr, msg);
-        exit(ret);
-    }
-    return 0;
-}
-
 static const int BITS = 32; // each int is 32 bits
 static const int BITS_PER_BYTE = 8;
 static const int R = 1 << BITS_PER_BYTE;   // each bytes is between 0 and 255
@@ -514,64 +431,58 @@ static kvp *a, *aux, *tmp;
 static int numThreads;
 static unsigned long long count_mult[MAX_NUM_THREADS + 1][R + 1];
 static pthread_barrier_t barrier;
+int tids[MAX_NUM_THREADS];
 
-void *thread(void *var)
+void *thread(void* id)
 {
-    const int tid = *((int *) var);            // this thread processes the pth partition of the array a
-    const int start = n * (tid / numThreads);      // this thread processes a[i] for start <= i < end
-    const int end = n * ((tid + 1) / numThreads);  // this thread processes a[i] for start <= i < end
+    const int tid= *(int*)id;
+    const int start = tid * n / numThreads;
+    const int end = (tid + 1) * n / numThreads;
 
-    for (int d = 0; d < w; d++) {
+    for (int d = 0; d < w; d++)
+    {
+        int shift = BITS_PER_BYTE * d;
         /* Initialize the partition of the array used to 0 */
         memset(count_mult[tid], 0, sizeof(count_mult[tid]));
         pthread_barrier_wait(&barrier);
 
-        // compute frequency count
+        /* compute frequency count */
         for (int i = start; i < end; i++)
         {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            int c = (((a[i].key) >> shift) & MASK) + 1;
             count_mult[tid][c]++;
         }
 
-        pthread_barrier_wait(&barrier);
-
         /* compute global cumulates with the first thread */
+        pthread_barrier_wait(&barrier);
         if (tid == 0)
         {
-            for (int t = 0; t < numThreads - 1; t++) {
-                for (int i = 0; i < R; i++) {
-                    count_mult[t + 1][i] += count_mult[t][i];
-                }
-            }
-            
-            for (int i = 0; i < R - 1; i++) {
-                count_mult[numThreads - 1][i + 1] += count_mult[numThreads - 1][i];
-            }
+            for (int i = 1; i < numThreads; i++)
+                for (int j = 1; j < R + 1; j++)
+                    count_mult[i][j] += count_mult[i - 1][j];
 
-            for (int t = 0; t < numThreads - 1; t++) {
-                for (int i = 1; i < R; i++) {
-                    count_mult[t][i] += count_mult[numThreads - 1][i - 1];
-                }
-            }
+            for (int i = 1; i < R + 1; i++)
+                count_mult[numThreads][i] = count_mult[numThreads][i - 1] + count_mult[numThreads - 1][i];
+
+            for (int i = 1; i < R + 1; i++)
+                for (int j = 0; j < numThreads; j++)
+                    count_mult[j][i] += count_mult[numThreads][i - 1];
         }
 
         pthread_barrier_wait(&barrier);
 
-        // move data
+        /* move data */
         for (int i = end - 1; i >= start; i--)
         {
-            int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
+            int c = (((a[i].key) >> shift) & MASK) + 1;
             aux[--count_mult[tid][c]] = a[i];
         }
 
         pthread_barrier_wait(&barrier);
-
-        // copy back
-        if (d == 3)
+        if (d == w - 1)
         {
-            for (int i = start; i < end; i++) {
+            for (int i = start; i < end; i++)
                 a[i] = aux[i];
-            }
         }
 
         else
@@ -583,53 +494,48 @@ void *thread(void *var)
                 aux = tmp;
             }
             pthread_barrier_wait(&barrier);
-        }
+        }		
     }
+
     return NULL;
 }
-
-
 char multithread_descr[] = "multithread: Current working version";
-void multithread(int dim, kvp *arr, kvp *aux1)
+void multithread(int dim, kvp *src, kvp *dst) 
 {
-    extern int n, numThreads;
-    extern  kvp *a, *aux;
-    int tids[MAX_NUM_THREADS];
-    n = dim;
-    a = arr;
-    aux = aux1;
-    if (dim >= 100000) {
-        numThreads = 16;
-    } 
-    else if (dim >= 65536) {
+    if (dim < 60000)
+    {
+        singlethread(dim, src, dst);
+        return;
+    }
+    
+    else if (dim < 100000)
+    {
         numThreads = 4;
     }
-    else {
-       singlethread(dim, arr, aux1);
-       return;
+    else
+    {
+        numThreads = MAX_NUM_THREADS;
     }
-    int s;
-    pthread_t tid[numThreads];
-    
-    /* Initialize the barrier. */
+
+    a=src;
+    aux=dst;
+    n = dim;
     pthread_barrier_init(&barrier, NULL, numThreads);
-    
-    /* Initialize the thread pamaeters and then create 'numThreads' threads */
-    for (int t = 0; t < numThreads; t++)
+
+    for(int i = 0; i < numThreads; i++)
     {
-        tids[t] = t;
-        s = pthread_create(&tid[t], NULL, thread, &tids[t]);
-        ERREXIT(s, "pthread_create");
+      tids[i]=i;
+      pthread_create(&threads[i], NULL, thread, &tids[i]);
     }
-    
-    /* Wait for the threads to finish */
-    for (int t = 0; t < numThreads; t++)
-    {
-        s = pthread_join(tid[t], NULL);
-        ERREXIT(s, "pthread_join");
-    }
+
+    for(int i=0;i < numThreads;i++)
+      pthread_join(threads[i], NULL);
+
     pthread_barrier_destroy(&barrier);
 }
+
+
+
 
 /*********************************************************************
  * register_multithread_functions - Register all of your different versions
