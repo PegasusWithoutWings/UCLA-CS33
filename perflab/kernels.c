@@ -435,45 +435,50 @@ static const int MASK = R - 1;             // 0xFF
 static const int w = BITS / BITS_PER_BYTE; // each int is 4 bytes
 static const int MAX_NUM_THREADS = 16;
 static int n;                              // the dimension fo the source array
-static kvp *a, *aux;
+static kvp *a, *aux, *tmp;
 static int numThreads;
-static unsigned long long count_mult[MAX_NUM_THREADS][R];
+static unsigned long long count_mult[MAX_NUM_THREADS + 1][R + 1];
 static pthread_barrier_t barrier;
 
 void *thread(void *var)
 {
-    const int p = *((int *) var);            // this thread processes the pth partition of the array a
-    const int start = n * (p / numThreads);      // this thread processes a[i] for start <= i < end
-    const int end = n * ((p + 1) / numThreads);  // this thread processes a[i] for start <= i < end
+    const int tid = *((int *) var);            // this thread processes the pth partition of the array a
+    const int start = n * (tid / numThreads);      // this thread processes a[i] for start <= i < end
+    const int end = n * ((tid + 1) / numThreads);  // this thread processes a[i] for start <= i < end
 
     for (int d = 0; d < w; d++)
     {
         /* Initialize the partition of the array used to 0 */
-        memset(&count_mult[p], 0, sizeof(unsigned long long ) * R);
+        memset(count_mult[tid], 0, sizeof(count_mult[tid]));
+        pthread_barrier_wait(&barrier);
+
         // compute frequency count
         for (int i = start; i < end; i++)
         {
             int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            count_mult[p][c]++;
+            count_mult[tid][c]++;
         }
-
-        // compute cumulates
-        for (int r = 0; r < R - 1; r++)
-            count_mult[p][r + 1] += count_mult[p][r];
 
         pthread_barrier_wait(&barrier);
 
         /* compute global cumulates with the first thread */
-        if (p == 0)
+        if (tid == 0)
         {
-            for (int p = 0; p < numThreads - 1; p++)
-                for (int r = 0; r < R - 1; r++)
-                    count_mult[p + 1][r] += count_mult[p][r];
+            for (int t = 0; t < numThreads - 1; t++) {
+                for (int i = 0; i < R; i++) {
+                    count_mult[t + 1][i] += count_mult[t][i];
+                }
+            }
+            
+            for (int i = 0; i < R - 1; i++) {
+                count_mult[numThreads - 1][i + 1] += count_mult[numThreads - 1][i];
+            }
 
-            for (int p = numThreads - 2; p >= 0; p--)
-                for (int r = R - 1; r > 0; r--)
-                    count_mult[p][r] += count_mult[numThreads - 1][r - 1] - 
-                                            count_mult[p][r - 1];
+            for (int t = 0; t < numThreads - 1; t++) {
+                for (int i = 1; i < R; i++) {
+                    count_mult[t][i] += count_mult[numThreads - 1][i - 1];
+                }
+            }
         }
 
         pthread_barrier_wait(&barrier);
@@ -482,14 +487,29 @@ void *thread(void *var)
         for (int i = end - 1; i >= start; i--)
         {
             int c = (a[i].key >> BITS_PER_BYTE * d) & MASK;
-            aux[--count_mult[p][c]] = a[i];
+            aux[--count_mult[tid][c]] = a[i];
         }
 
         pthread_barrier_wait(&barrier);
+
         // copy back
-        for (int i = start; i < end; i++)
-            a[i] = aux[i];
-        pthread_barrier_wait(&barrier);
+        if (d == 3)
+        {
+            for (int i = start; i < end; i++) {
+                a[i] = aux[i];
+            }
+        }
+
+        else
+        {
+            if (tid == 0)
+            {
+                tmp = a;
+                a = aux;
+                aux = tmp;
+            }
+            pthread_barrier_wait(&barrier);
+        }
     }
     return NULL;
 }
@@ -499,13 +519,14 @@ void multithread(int dim, kvp *arr, kvp *aux1)
 {
     extern int n, numThreads;
     extern  kvp *a, *aux;
+    int tids[MAX_NUM_THREADS];
     n = dim;
     a = arr;
     aux = aux1;
-    if (dim == 1048576 || dim == 4194304) {
-        numThreads = 8;
+    if (dim >= 100000) {
+        numThreads = 16;
     } 
-    else if (dim == 65536 || dim == 262144) {
+    else if (dim >= 65536) {
         numThreads = 4;
     }
     else {
@@ -521,12 +542,8 @@ void multithread(int dim, kvp *arr, kvp *aux1)
     /* Initialize the thread pamaeters and then create 'numThreads' threads */
     for (int t = 0; t < numThreads; t++)
     {
-        int *arg = (int *)malloc(sizeof(int));
-        if (arg == NULL) {
-            ERREXIT(1, "malloc");
-        }
-        *arg = t;
-        s = pthread_create(&tid[t], NULL, thread, arg);
+        tids[t] = t;
+        s = pthread_create(&tid[t], NULL, thread, &tids[t]);
         ERREXIT(s, "pthread_create");
     }
     
@@ -536,6 +553,8 @@ void multithread(int dim, kvp *arr, kvp *aux1)
         s = pthread_join(tid[t], NULL);
         ERREXIT(s, "pthread_join");
     }
+
+    pthread_barrier_destroy(&barrier);
 }
 
 /*********************************************************************
